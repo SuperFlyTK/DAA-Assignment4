@@ -7,7 +7,6 @@ import graph.topo.TopoResult;
 
 import java.util.*;
 
-
 public class DAGShortestPath {
 
     public PathResult findShortestPath(Graph graph, int source) {
@@ -15,110 +14,158 @@ public class DAGShortestPath {
         metrics.startTimer();
 
         // First get topological order
-        TopologicalSort topoSort = new TopologicalSort();
-        TopoResult topoResult = topoSort.kahnAlgorithm(graph);
+        TopologicalSort topo = new TopologicalSort();
+        TopoResult topoResult = topo.kahnAlgorithm(graph);
 
         if (topoResult.hasCycle()) {
-            throw new IllegalArgumentException("Graph contains cycles - not a DAG");
+            throw new IllegalArgumentException("Graph contains cycles - cannot compute shortest paths in cyclic graph");
         }
 
-        List<Integer> topoOrder = topoResult.getTopologicalOrder();
+        List<Integer> topologicalOrder = topoResult.getTopologicalOrder();
+        metrics.addAll(topoResult.getMetrics());
+
         int n = graph.getNodeCount();
+        int[] distances = new int[n];
+        int[] predecessors = new int[n];
 
-        // Initialize distances
-        int[] dist = new int[n];
-        int[] prev = new int[n];
-        Arrays.fill(dist, Integer.MAX_VALUE);
-        Arrays.fill(prev, -1);
-        dist[source] = 0;
+        Arrays.fill(distances, Integer.MAX_VALUE);
+        Arrays.fill(predecessors, -1);
+        distances[source] = 0;
 
-        // Relax edges in topological order
-        for (int u : topoOrder) {
+        // Process nodes in topological order
+        for (int u : topologicalOrder) {
             metrics.incrementOperation();
 
-            if (dist[u] != Integer.MAX_VALUE) {
+            if (distances[u] != Integer.MAX_VALUE) {
                 for (Graph.Edge edge : graph.getEdges(u)) {
                     int v = edge.v;
                     int weight = edge.weight;
-
+                    metrics.incrementOperation();
                     metrics.incrementEdgeRelaxations();
 
-                    if (dist[u] + weight < dist[v]) {
-                        dist[v] = dist[u] + weight;
-                        prev[v] = u;
+                    if (distances[u] + weight < distances[v]) {
+                        distances[v] = distances[u] + weight;
+                        predecessors[v] = u;
+                        metrics.incrementOperation();
                     }
                 }
             }
         }
 
         metrics.stopTimer();
-
-        return new PathResult(dist, prev, source, true, metrics);
+        return new PathResult(distances, predecessors, source, true, metrics);
     }
 
     public PathResult findLongestPath(Graph graph, int source) {
         Metrics metrics = new Metrics();
         metrics.startTimer();
 
-        // Convert to shortest path problem by negating weights
-        Graph negatedGraph = negateWeights(graph);
+        // For longest path, we process in topological order with max
+        TopologicalSort topo = new TopologicalSort();
+        TopoResult topoResult = topo.kahnAlgorithm(graph);
 
-        // Find shortest path in negated graph
-        PathResult shortestPathResult = findShortestPath(negatedGraph, source);
-
-        // Convert distances back (negate again)
-        int[] longestDist = new int[shortestPathResult.getDistances().length];
-        for (int i = 0; i < longestDist.length; i++) {
-            if (shortestPathResult.getDistances()[i] == Integer.MAX_VALUE) {
-                longestDist[i] = Integer.MIN_VALUE;
-            } else if (shortestPathResult.getDistances()[i] == Integer.MIN_VALUE) {
-                longestDist[i] = Integer.MAX_VALUE;
-            } else {
-                longestDist[i] = -shortestPathResult.getDistances()[i];
-            }
+        if (topoResult.hasCycle()) {
+            throw new IllegalArgumentException("Graph contains cycles - cannot compute longest paths in cyclic graph");
         }
 
-        metrics.stopTimer();
+        List<Integer> topologicalOrder = topoResult.getTopologicalOrder();
+        metrics.addAll(topoResult.getMetrics());
 
-        return new PathResult(longestDist, shortestPathResult.getPredecessors(),
-                source, false, metrics);
-    }
-
-    public CriticalPathResult findCriticalPath(Graph graph) {
-        // For critical path, find the longest path from any source to any sink
         int n = graph.getNodeCount();
-        int maxLength = Integer.MIN_VALUE;
-        List<Integer> criticalPath = new ArrayList<>();
-        PathResult bestResult = null;
+        int[] distances = new int[n];
+        int[] predecessors = new int[n];
 
-        // Try all possible sources
-        for (int source = 0; source < n; source++) {
-            PathResult longestFromSource = findLongestPath(graph, source);
-            int[] dist = longestFromSource.getDistances();
+        Arrays.fill(distances, Integer.MIN_VALUE);
+        Arrays.fill(predecessors, -1);
+        distances[source] = 0;
 
-            for (int i = 0; i < n; i++) {
-                if (dist[i] != Integer.MIN_VALUE && dist[i] > maxLength) {
-                    maxLength = dist[i];
-                    bestResult = longestFromSource;
-                    criticalPath = longestFromSource.reconstructPath(i);
+        // Process nodes in topological order for LONGEST path
+        for (int u : topologicalOrder) {
+            metrics.incrementOperation();
+
+            if (distances[u] != Integer.MIN_VALUE) {
+                for (Graph.Edge edge : graph.getEdges(u)) {
+                    int v = edge.v;
+                    int weight = edge.weight;
+                    metrics.incrementOperation();
+                    metrics.incrementEdgeRelaxations();
+
+                    if (distances[u] + weight > distances[v]) {
+                        distances[v] = distances[u] + weight;
+                        predecessors[v] = u;
+                        metrics.incrementOperation();
+                    }
                 }
             }
         }
 
-        return new CriticalPathResult(criticalPath, maxLength, bestResult.getMetrics());
+        metrics.stopTimer();
+        return new PathResult(distances, predecessors, source, false, metrics);
     }
 
-    private Graph negateWeights(Graph graph) {
-        Graph negated = new Graph(graph.getNodeCount(), true);
+    public CriticalPathResult findCriticalPath(Graph graph) {
+        Metrics metrics = new Metrics();
+        metrics.startTimer();
 
-        for (int u = 0; u < graph.getNodeCount(); u++) {
+        TopologicalSort topo = new TopologicalSort();
+        TopoResult topoResult = topo.kahnAlgorithm(graph);
+
+        if (topoResult.hasCycle()) {
+            throw new IllegalArgumentException("Graph contains cycles - cannot compute critical path");
+        }
+
+        List<Integer> topologicalOrder = topoResult.getTopologicalOrder();
+        metrics.addAll(topoResult.getMetrics());
+
+        int n = graph.getNodeCount();
+        int[] dist = new int[n];
+        int[] pred = new int[n];
+
+        Arrays.fill(dist, 0); // Start with 0 for all nodes
+        Arrays.fill(pred, -1);
+
+        // Standard longest path in DAG algorithm
+        for (int u : topologicalOrder) {
+            metrics.incrementOperation();
+
             for (Graph.Edge edge : graph.getEdges(u)) {
-                int negatedWeight = (edge.weight == Integer.MIN_VALUE) ?
-                        Integer.MAX_VALUE : -edge.weight;
-                negated.addEdge(edge.u, edge.v, negatedWeight);
+                int v = edge.v;
+                int weight = edge.weight;
+                metrics.incrementOperation();
+                metrics.incrementEdgeRelaxations();
+
+                if (dist[u] + weight > dist[v]) {
+                    dist[v] = dist[u] + weight;
+                    pred[v] = u;
+                    metrics.incrementOperation();
+                }
             }
         }
 
-        return negated;
+        // Find the node with maximum distance
+        int maxDist = 0;
+        int endNode = 0;
+        for (int i = 0; i < n; i++) {
+            if (dist[i] > maxDist) {
+                maxDist = dist[i];
+                endNode = i;
+            }
+        }
+
+        // Reconstruct the critical path
+        List<Integer> criticalPath = new ArrayList<>();
+        int current = endNode;
+        while (current != -1) {
+            criticalPath.add(0, current);
+            current = pred[current];
+        }
+
+        // If no path found (graph with no edges), return single node
+        if (criticalPath.isEmpty() && n > 0) {
+            criticalPath.add(0);
+        }
+
+        metrics.stopTimer();
+        return new CriticalPathResult(criticalPath, maxDist, metrics);
     }
 }

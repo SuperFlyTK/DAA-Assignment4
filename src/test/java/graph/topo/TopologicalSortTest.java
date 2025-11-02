@@ -11,7 +11,7 @@ class TopologicalSortTest {
 
     @Test
     void testTopologicalSortDAG() {
-        Graph graph = new Graph(6, true);
+        Graph graph = new Graph(6, true, "edge");
         graph.addEdge(5, 2, 1);
         graph.addEdge(5, 0, 1);
         graph.addEdge(4, 0, 1);
@@ -30,11 +30,13 @@ class TopologicalSortTest {
         assertTrue(order.indexOf(5) < order.indexOf(2));
         assertTrue(order.indexOf(2) < order.indexOf(3));
         assertTrue(order.indexOf(3) < order.indexOf(1));
+        assertTrue(order.indexOf(4) < order.indexOf(0));
+        assertTrue(order.indexOf(4) < order.indexOf(1));
     }
 
     @Test
     void testTopologicalSortWithCycle() {
-        Graph graph = new Graph(3, true);
+        Graph graph = new Graph(3, true, "edge");
         graph.addEdge(0, 1, 1);
         graph.addEdge(1, 2, 1);
         graph.addEdge(2, 0, 1); // Cycle

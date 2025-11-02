@@ -1,7 +1,6 @@
 package graph.scc;
 
 import graph.Graph;
-import graph.GraphParser;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -12,7 +11,7 @@ class TarjanSCCTest {
 
     @Test
     void testSCCWithCycle() {
-        Graph graph = new Graph(4, true);
+        Graph graph = new Graph(4, true, "edge");
         graph.addEdge(0, 1, 1);
         graph.addEdge(1, 2, 1);
         graph.addEdge(2, 3, 1);
@@ -23,13 +22,26 @@ class TarjanSCCTest {
         List<List<Integer>> components = result.getComponents();
 
         assertEquals(2, components.size());
-        assertTrue(components.stream().anyMatch(comp -> comp.contains(0) && comp.size() == 1));
-        assertTrue(components.stream().anyMatch(comp -> comp.contains(1) && comp.contains(2) && comp.contains(3)));
+
+        // Find the single-node component and the cycle component
+        List<Integer> singleComponent = components.stream()
+                .filter(comp -> comp.size() == 1)
+                .findFirst()
+                .orElse(null);
+        List<Integer> cycleComponent = components.stream()
+                .filter(comp -> comp.size() == 3)
+                .findFirst()
+                .orElse(null);
+
+        assertNotNull(singleComponent);
+        assertNotNull(cycleComponent);
+        assertEquals(0, (int) singleComponent.get(0));
+        assertTrue(cycleComponent.contains(1) && cycleComponent.contains(2) && cycleComponent.contains(3));
     }
 
     @Test
     void testDAGNoSCCs() {
-        Graph graph = new Graph(4, true);
+        Graph graph = new Graph(4, true, "edge");
         graph.addEdge(0, 1, 1);
         graph.addEdge(1, 2, 1);
         graph.addEdge(2, 3, 1);

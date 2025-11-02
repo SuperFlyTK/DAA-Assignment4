@@ -5,7 +5,6 @@ import graph.Metrics;
 
 import java.util.*;
 
-
 public class TarjanSCC {
     private int index;
     private int[] indices;
@@ -37,6 +36,8 @@ public class TarjanSCC {
 
         metrics.stopTimer();
 
+        sortComponents();
+
         // Build condensation graph
         Graph condensationGraph = buildCondensationGraph(graph, components);
 
@@ -45,21 +46,26 @@ public class TarjanSCC {
 
     private void strongConnect(Graph graph, int v) {
         metrics.incrementDfsVisits();
+        metrics.incrementOperation(); // node visit
         indices[v] = index;
         lowlinks[v] = index;
         index++;
         stack.push(v);
         onStack[v] = true;
+        metrics.incrementOperation(); // stack push
 
         for (Graph.Edge edge : graph.getEdges(v)) {
             int w = edge.v;
-            metrics.incrementOperation();
+            metrics.incrementOperation(); // process edge
+            metrics.incrementEdgeRelaxations(); // COUNT AS EDGE RELAXATION FOR SCC
 
             if (indices[w] == -1) {
                 strongConnect(graph, w);
                 lowlinks[v] = Math.min(lowlinks[v], lowlinks[w]);
+                metrics.incrementOperation(); // update lowlink
             } else if (onStack[w]) {
                 lowlinks[v] = Math.min(lowlinks[v], indices[w]);
+                metrics.incrementOperation(); // found in stack
             }
         }
 
@@ -70,14 +76,29 @@ public class TarjanSCC {
                 w = stack.pop();
                 onStack[w] = false;
                 component.add(w);
+                metrics.incrementOperation(); // pop from stack
             } while (w != v);
+
+            Collections.sort(component);
             components.add(component);
         }
     }
 
+    private void sortComponents() {
+        for (List<Integer> component : components) {
+            Collections.sort(component);
+        }
+
+        components.sort((c1, c2) -> {
+            int first1 = c1.get(0);
+            int first2 = c2.get(0);
+            return Integer.compare(first1, first2);
+        });
+    }
+
     private Graph buildCondensationGraph(Graph originalGraph, List<List<Integer>> components) {
         int componentCount = components.size();
-        Graph condensationGraph = new Graph(componentCount, true);
+        Graph condensationGraph = new Graph(componentCount, true, originalGraph.getWeightModel());
 
         // Map each node to its component index
         int[] componentMap = new int[originalGraph.getNodeCount()];
@@ -88,14 +109,21 @@ public class TarjanSCC {
         }
 
         // Add edges between different components
+        Set<String> addedEdges = new HashSet<>();
         for (int u = 0; u < originalGraph.getNodeCount(); u++) {
             for (Graph.Edge edge : originalGraph.getEdges(u)) {
+                metrics.incrementOperation(); // process edge for condensation
                 int v = edge.v;
                 int compU = componentMap[u];
                 int compV = componentMap[v];
 
                 if (compU != compV) {
-                    condensationGraph.addEdge(compU, compV, edge.weight);
+                    String edgeKey = compU + "->" + compV;
+                    if (!addedEdges.contains(edgeKey)) {
+                        condensationGraph.addEdge(compU, compV, edge.weight);
+                        addedEdges.add(edgeKey);
+                        metrics.incrementOperation(); // add condensation edge
+                    }
                 }
             }
         }

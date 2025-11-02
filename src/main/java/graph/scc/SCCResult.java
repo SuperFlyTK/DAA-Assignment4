@@ -29,12 +29,21 @@ public class SCCResult {
         return metrics;
     }
 
+    // ADD METHOD TO GET SCC SIZES AS REQUIRED
+    public int[] getComponentSizes() {
+        int[] sizes = new int[components.size()];
+        for (int i = 0; i < components.size(); i++) {
+            sizes[i] = components.get(i).size();
+        }
+        return sizes;
+    }
+
     public void printResults() {
         System.out.println("Strongly Connected Components:");
         System.out.println("Found " + components.size() + " components");
 
         for (int i = 0; i < components.size(); i++) {
-            System.out.println("Component " + i + ": " + components.get(i));
+            System.out.println("Component " + i + " (size: " + components.get(i).size() + "): " + components.get(i));
         }
 
         System.out.println("\nCondensation Graph:");
