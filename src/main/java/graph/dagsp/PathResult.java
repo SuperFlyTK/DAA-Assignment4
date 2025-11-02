@@ -5,9 +5,6 @@ import graph.Metrics;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Result container for path algorithms
- */
 public class PathResult {
     private final int[] distances;
     private final int[] predecessors;

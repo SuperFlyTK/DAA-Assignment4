@@ -1,4 +1,4 @@
 Dataset,Nodes,Edges,Algorithm,Time(ns),Operations,DFS_Visits,Edge_Relaxations,Kahn_Operations
-tasks.json,8,7,SCC,625400,49,8,7,0
-tasks.json,8,7,TopologicalSort,566600,26,0,0,20
-tasks.json,8,7,CriticalPath,448400,132,0,7,0
+tasks.json,8,7,SCC,630300,49,8,7,0
+tasks.json,8,7,TopologicalSort,468300,26,0,0,20
+tasks.json,8,7,CriticalPath,63800,40,0,4,20

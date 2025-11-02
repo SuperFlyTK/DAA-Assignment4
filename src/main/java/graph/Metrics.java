@@ -25,6 +25,13 @@ public class Metrics {
     public void incrementEdgeRelaxations() { edgeRelaxations++; }
     public void incrementKahnOperations() { kahnOperations++; }
 
+    public void addAll(Metrics other) {
+        this.operationCount += other.operationCount;
+        this.dfsVisits += other.dfsVisits;
+        this.edgeRelaxations += other.edgeRelaxations;
+        this.kahnOperations += other.kahnOperations;
+    }
+
     // Getters
     public int getOperationCount() { return operationCount; }
     public int getDfsVisits() { return dfsVisits; }
@@ -34,5 +41,13 @@ public class Metrics {
     public void reset() {
         operationCount = dfsVisits = edgeRelaxations = kahnOperations = 0;
         startTime = endTime = 0;
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "Metrics{time=%.3fms, operations=%d, dfsVisits=%d, relaxations=%d, kahnOps=%d}",
+                getElapsedTimeNanos() / 1_000_000.0, operationCount, dfsVisits, edgeRelaxations, kahnOperations
+        );
     }
 }
